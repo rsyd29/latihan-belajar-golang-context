@@ -291,3 +291,37 @@ func TestContextWithTimeout(t *testing.T) {
 	defer cancel()
 	*/
 }
+
+// Unit Test untuk Context With Deadline
+func TestContextWithDeadline(t *testing.T) {
+	fmt.Println("Total Goroutine Awal", runtime.NumGoroutine())
+	parent := context.Background()
+	// context.WithDeadline(parent, time)
+	ctx, cancel := context.WithDeadline(parent, time.Now().Add(5*time.Second)) // timenya sekarang + 5 detik
+	defer cancel()                                                             // untuk memastikan function unit test sudah dijalankan maka cancel akan dieksekusi
+
+	destination := CreateCounterWithTimeout(ctx)
+	fmt.Println("Total Goroutine Func", runtime.NumGoroutine())
+	for n := range destination { // melakukan looping tidak pernah berhenti, jadi apabila itu tidak pernah berhenti
+		// sampai waktu duration timeout blm seleesai juga, maka akan dibatalkan
+		fmt.Println("Counter", n)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	fmt.Println("Total Goroutine Akhir", runtime.NumGoroutine())
+	/**
+	Outputnya
+	=== RUN   TestContextWithDeadline
+	Total Goroutine Awal 2
+	Total Goroutine Func 3
+	Counter 1
+	Counter 2
+	Counter 3
+	Counter 4
+	Counter 5
+	Total Goroutine Akhir 2
+	--- PASS: TestContextWithDeadline (7.00s)
+	PASS
+	*/
+}
