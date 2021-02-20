@@ -227,3 +227,67 @@ func TestContextWithCancelParameter(t *testing.T) {
 	PASS
 	*/
 }
+
+// Context With Timeout
+func CreateCounterWithTimeout(ctx context.Context) chan int {
+	destination := make(chan int)
+
+	go func() {
+		defer close(destination)
+		counter := 1
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				destination <- counter
+				counter++
+				time.Sleep(1 * time.Second) // simulasi slow
+			}
+		}
+	}()
+	return destination
+}
+
+// Unit test untuk context with timeout
+func TestContextWithTimeout(t *testing.T) {
+	fmt.Println("Total Goroutine Awal", runtime.NumGoroutine())
+	parent := context.Background()
+	// context.WithTimeout(parent, duration)
+	ctx, cancel := context.WithTimeout(parent, 5*time.Second)
+	defer cancel() // untuk memastikan function unit test sudah dijalankan maka cancel akan dieksekusi
+
+	destination := CreateCounterWithTimeout(ctx)
+	fmt.Println("Total Goroutine Func", runtime.NumGoroutine())
+	for n := range destination { // melakukan looping tidak pernah berhenti, jadi apabila itu tidak pernah berhenti
+		// sampai waktu duration timeout blm seleesai juga, maka akan dibatalkan
+		fmt.Println("Counter", n)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	fmt.Println("Total Goroutine Akhir", runtime.NumGoroutine())
+	/**
+	Output Program
+	=== RUN   TestContextWithTimeout
+	Total Goroutine Awal 2
+	Total Goroutine Func 3
+	Counter 1
+	Counter 2
+	Counter 3
+	Counter 4
+	Counter 5
+	Total Goroutine Akhir 2
+	--- PASS: TestContextWithTimeout (7.00s)
+	PASS
+
+	Kenapa keluar counternya hanya sampai 5? karena kita berhentinya setiap 1 detik (slow motion),
+	jadi setiap counter akan sleep selama 1 detik sampai counter 5. Ketika sudah sampai counter 5.
+	Duration timeoutnya hanya sampai 5 detik, maka pada saat counter 5 sinyal cancel dikirim masuk ke dalam select yang
+	menyatakan bahwa ctx.Done() telah selesai dan dibatalkan, dan channel destination akan di close.
+
+	Jadi dengan menggunakan duration timeout, maka program counter itu tidak akan lebih dari 5 detik.
+	Jadi tetap direkomendasikan tetap memanggil
+	defer cancel()
+	*/
+}
